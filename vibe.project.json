@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "templateVersion": "0.3.0",
+  "mode": "deep",
+  "tools": [],
+  "documents": {
+    "prd": "docs/PRD-PawLoka-MVP.md",
+    "techdesign": "docs/TechDesign-PawLoka-MVP.md"
+  }
+}

@@ -1,0 +1,120 @@
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+  border: 0;
+}
+
+/* Install App */
+
+.install-app-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.install-app-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.65rem;
+  padding: 0.65rem 0.95rem;
+  border: 1px solid var(--forest, #285b48);
+  border-radius: 999px;
+  background: var(--forest, #285b48);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.install-app-button:hover {
+  filter: brightness(0.94);
+  transform: translateY(-1px);
+}
+
+.install-app-button:focus-visible,
+.install-app-close:focus-visible {
+  outline: 3px solid #82bda1;
+  outline-offset: 3px;
+}
+
+.install-app-button svg {
+  flex-shrink: 0;
+}
+
+.install-app-popover {
+  position: absolute;
+  top: calc(100% + 0.75rem);
+  right: 0;
+  z-index: 1000;
+  width: min(19rem, calc(100vw - 2rem));
+  padding: 1rem;
+  border: 1px solid #dce9df;
+  border-radius: 1rem;
+  background: #fffdf6;
+  color: #285b48;
+  box-shadow: 0 8px 28px rgba(31, 66, 49, 0.15);
+}
+
+.install-app-popover-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.install-app-popover-heading strong {
+  font-size: 0.95rem;
+}
+
+.install-app-popover p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.install-app-close {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.install-app-close:hover {
+  background: #eaf4ed;
+}
+
+@media (max-width: 480px) {
+  .install-app-button {
+    min-height: 2.4rem;
+    padding: 0.55rem 0.7rem;
+    font-size: 0.78rem;
+  }
+}
+.brand-logo-image {
+  width: 2.45rem;
+  height: 2.45rem;
+  display: block;
+  object-fit: contain;
+  border-radius: 0.75rem;
+  flex-shrink: 0;
+}

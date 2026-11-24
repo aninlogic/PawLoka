@@ -1,0 +1,63 @@
+:root {
+  font-family:
+    "Nunito Sans", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #284b3d;
+  background: #fffdf6;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --mint: #d7f0e2;
+  --off-white: #fffdf6;
+  --forest: #204b38;
+  --forest-deep: #173a2c;
+  --lavender: #eee6ff;
+  --yellow: #ffd85b;
+  --coral: #ff8e78;
+  --coral-ink: #bd5546;
+  --muted: #74837a;
+  --line: #e8eee6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+::selection {
+  color: var(--forest-deep);
+  background: var(--yellow);
+}
+
+:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 3px;
+}

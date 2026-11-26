@@ -10,6 +10,7 @@ import { AdoptionGuidePage } from './pages/AdoptionGuidePage'
 import { ApplicationsPage } from './pages/ApplicationsPage'
 import { AboutPage } from './pages/AboutPage'
 import { ApplicationPage } from './pages/ApplicationPage'
+import { ApplicationReceiptPage } from './pages/ApplicationReceiptPage'
 import { AdminLoginPage } from './pages/AdminLoginPage'
 import { AdminPage } from './pages/AdminPage'
 
@@ -30,6 +31,7 @@ export function AppRoutes() {
         <Route path="admin/login" element={<AdminLoginPage />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="*" element={<AboutPage notFound />} />
+        <Route path="/applications/:id/receipt" element={<ApplicationReceiptPage />} />
       </Route>
     </Routes>
   )

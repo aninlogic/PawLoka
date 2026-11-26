@@ -165,7 +165,19 @@ const client = createSupabaseClient();
     async getClaimedApplication(id, accessTokenHash) {
       const { data, error } = await client
         .from('applications')
-        .select('id, status, created_at, pet:pets(id, name, species, image_url), shelter:shelters(name)')
+
+.select(`
+  id,
+  applicant_name,
+  domicile,
+  adoption_reason,
+  pet_experience,
+  message,
+  status,
+  created_at,
+  pet:pets(id, name, species, image_url),
+  shelter:shelters(name)
+`)
         .eq('id', id)
         .eq('access_token_hash', accessTokenHash)
         .maybeSingle();

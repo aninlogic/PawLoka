@@ -1,16 +1,39 @@
 const cors = require('cors');
 const express = require('express');
-const { rateLimit } = require('express-rate-limit');
 const helmet = require('helmet');
-const { createHash, randomBytes } = require('node:crypto');
 const { z } = require('zod');
 const { createRepository } = require('./data/repository');
+const { createPetModel } = require('./models/petModel');
 
+const { createPetController } = require('./controllers/petController');
+const {
+  createPetRoutes,
+  createAdminPetRoutes,
+} = require('./routes/petRoutes');
+
+const { createShelterModel } = require('./models/shelterModel');
+
+const { createShelterController } = require('./controllers/shelterController');
+
+const {
+  createShelterRoutes,
+  createAdminShelterRoutes,
+} = require('./routes/shelterRoutes');
+
+const { createApplicationModel } = require('./models/applicationModel');
+
+const { createApplicationController } = require('./controllers/applicationController');
+
+const {
+  createApplicationRoutes,
+  createAdminApplicationRoutes,
+} = require('./routes/applicationRoutes');
+
+const { asyncHandler } = require('./middleware/asyncHandler');
 const petSpecies = [
   'cat', 'dog', 'bird', 'hamster', 'sugar-glider', 'rabbit', 'turtle', 'fish', 'hedgehog',
 ];
 const petStatuses = ['available', 'reserved', 'adopted'];
-const applicationStatuses = ['pending', 'reviewing', 'approved', 'declined', 'closed'];
 const uuidSchema = z.string().uuid();
 const httpsUrlSchema = z.string().url().refine((value) => new URL(value).protocol === 'https:');
 const imageUrlSchema = z.union([httpsUrlSchema, z.literal('')]).optional();
@@ -38,18 +61,6 @@ const shelterPayloadSchema = z.object({
   is_published: z.boolean(),
 }).strict();
 
-const applicationPayloadSchema = z.object({
-  pet_id: uuidSchema,
-  applicant_name: z.string().trim().min(2).max(80),
-  email: z.union([z.string().trim().email().max(254), z.literal('')]).optional(),
-  domicile: z.string().trim().min(2).max(150),
-  adoption_reason: z.string().trim().min(10).max(1000),
-  pet_experience: z.string().trim().min(2).max(1000),
-  message: z.string().trim().max(1000).optional().default(''),
-  consent: z.literal(true),
-}).strict();
-
-const applicationAccessTokenSchema = z.string().regex(/^[a-f0-9]{64}$/);
 const petListQuerySchema = z.object({
   species: z.enum(petSpecies).or(z.literal('all')).optional(),
   status: z.enum(petStatuses).or(z.literal('all')).optional(),
@@ -68,12 +79,6 @@ class ApiError extends Error {
     this.status = status;
     this.code = code;
   }
-}
-
-function asyncHandler(handler) {
-  return (request, response, next) => {
-    Promise.resolve(handler(request, response, next)).catch(next);
-  };
 }
 
 function parseBody(schema, value) {
@@ -125,17 +130,50 @@ function requireAdmin(repository, adminId) {
 
 function createApp({ repository = createRepository(), adminId = process.env.ADMIN_USER_ID } = {}) {
   const app = express();
+const petModel = createPetModel(repository);
 
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:4173')
+const petController = createPetController({
+  petModel,
+  ApiError,
+  parseBody,
+  uuidSchema,
+  petListQuerySchema,
+  petPayloadSchema,
+});
+
+const shelterModel = createShelterModel(repository);
+
+const shelterController = createShelterController({
+  shelterModel,
+  ApiError,
+  parseBody,
+  uuidSchema,
+  shelterPayloadSchema,
+});
+
+const applicationModel = createApplicationModel(repository);
+
+const applicationController = createApplicationController({
+  applicationModel,
+  ApiError,
+  parseBody,
+  uuidSchema,
+});
+
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
   .map((origin) => origin.trim().replace(/\/+$/, ''))
-  .filter(Boolean)
+  .filter(Boolean);
 
 if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') {
   allowedOrigins.push(
-    'http://127.0.0.1:4173',
-    'http://localhost:4173'
-  )
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
+    'http://localhost:4173',
+    'http://127.0.0.1:4173'
+  );
 }
 
   app.set('trust proxy', process.env.VERCEL ? 1 : false);
@@ -150,185 +188,31 @@ app.use(cors({
     callback(new Error('Origin is not allowed by CORS'))
   },
 }));
-  app.use(express.json({ limit: '10kb' }));
 
+  app.use(express.json({ limit: '10kb' }));
+app.use('/api/pets', createPetRoutes(petController));
+app.use('/api/shelters', createShelterRoutes(shelterController));
+app.use(
+  '/api/applications',
+  createApplicationRoutes(applicationController)
+);
   app.get('/api/health', (_request, response) => {
     response.json({ data: { status: 'ok' } });
   });
 
-  app.get('/api/pets', asyncHandler(async (request, response) => {
-    const filters = parseBody(petListQuerySchema, request.query);
-    response.json({ data: await repository.listPets(filters) });
-  }));
-
-  app.get('/api/pets/:id', asyncHandler(async (request, response) => {
-    if (!uuidSchema.safeParse(request.params.id).success) {
-      throw new ApiError(400, 'INVALID_ID', 'ID hewan tidak valid.');
-    }
-    const pet = await repository.getPet(request.params.id);
-    if (!pet) throw new ApiError(404, 'PET_NOT_FOUND', 'Hewan tidak ditemukan.');
-    response.json({ data: pet });
-  }));
-
-  app.get('/api/shelters', asyncHandler(async (_request, response) => {
-    response.json({ data: await repository.listShelters() });
-  }));
-
-  app.get('/api/shelters/:id', asyncHandler(async (request, response) => {
-    if (!uuidSchema.safeParse(request.params.id).success) {
-      throw new ApiError(400, 'INVALID_ID', 'ID shelter tidak valid.');
-    }
-    const shelter = await repository.getShelter(request.params.id);
-    if (!shelter) throw new ApiError(404, 'SHELTER_NOT_FOUND', 'Shelter tidak ditemukan.');
-    response.json({ data: shelter });
-  }));
-
-  const applicationRateLimit = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 10,
-    standardHeaders: 'draft-8',
-    legacyHeaders: false,
-    message: {
-      error: { code: 'RATE_LIMITED', message: 'Terlalu banyak percobaan. Coba lagi nanti.' },
-    },
-  });
-  const applicationHistoryRateLimit = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 30,
-    standardHeaders: 'draft-8',
-    legacyHeaders: false,
-    message: {
-      error: { code: 'RATE_LIMITED', message: 'Terlalu banyak percobaan. Coba lagi nanti.' },
-    },
-  });
-
-  app.post('/api/applications', applicationRateLimit, asyncHandler(async (request, response) => {
-    const input = parseBody(applicationPayloadSchema, request.body);
-    const pet = await repository.getPet(input.pet_id);
-    if (!pet || pet.status !== 'available') {
-      throw new ApiError(409, 'PET_UNAVAILABLE', 'Hewan ini tidak tersedia untuk pengajuan.');
-    }
-    if (typeof repository.createApplication !== 'function') {
-      throw new ApiError(503, 'DATA_MODE_READ_ONLY', 'Pengajuan belum aktif pada mode demo lokal.');
-    }
-
-    const accessToken = randomBytes(32).toString('hex');
-    const application = await repository.createApplication({
-      pet_id: pet.id,
-      shelter_id: pet.shelter_id,
-      applicant_name: input.applicant_name,
-      email: input.email || null,
-      phone: null,
-      domicile: input.domicile,
-      adoption_reason: input.adoption_reason,
-      pet_experience: input.pet_experience,
-      message: input.message,
-      consent_at: new Date().toISOString(),
-      status: 'pending',
-      access_token_hash: createHash('sha256').update(accessToken).digest('hex'),
-    });
-    response.status(201).json({
-      data: {
-        id: application.id,
-        status: application.status,
-        created_at: application.created_at,
-        access_token: accessToken,
-      },
-    });
-  }));
-
-  app.get('/api/applications', (_request, _response, next) => {
-    next(new ApiError(404, 'APPLICATION_LIST_UNAVAILABLE', 'Daftar pengajuan tidak tersedia.'));
-  });
-
-  app.get('/api/applications/:id', applicationHistoryRateLimit, asyncHandler(async (request, response) => {
-    response.set('Cache-Control', 'no-store');
-    if (!uuidSchema.safeParse(request.params.id).success) {
-      throw new ApiError(400, 'INVALID_ID', 'ID pengajuan tidak valid.');
-    }
-
-    const accessToken = request.get('x-application-access-token') || '';
-    if (!applicationAccessTokenSchema.safeParse(accessToken).success) {
-      throw new ApiError(404, 'APPLICATION_NOT_FOUND', 'Riwayat pengajuan tidak ditemukan.');
-    }
-    if (typeof repository.getClaimedApplication !== 'function') {
-      throw new ApiError(503, 'DATA_MODE_READ_ONLY', 'Riwayat pengajuan belum aktif pada mode demo lokal.');
-    }
-
-    const tokenHash = createHash('sha256').update(accessToken).digest('hex');
-    const application = await repository.getClaimedApplication(request.params.id, tokenHash);
-    if (!application) {
-      throw new ApiError(404, 'APPLICATION_NOT_FOUND', 'Riwayat pengajuan tidak ditemukan.');
-    }
-
-    response.json({ data: application });
-  }));
-
   app.use('/api/admin', requireAdmin(repository, adminId));
-
-  app.get('/api/admin/applications', asyncHandler(async (_request, response) => {
-    response.json({ data: await repository.listApplications() });
-  }));
-
-  app.patch('/api/admin/applications/:id', asyncHandler(async (request, response) => {
-    if (!uuidSchema.safeParse(request.params.id).success) {
-      throw new ApiError(400, 'INVALID_ID', 'ID pengajuan tidak valid.');
-    }
-    const input = parseBody(z.object({ status: z.enum(applicationStatuses) }).strict(), request.body);
-    const application = await repository.updateApplication(request.params.id, input);
-    if (!application) throw new ApiError(404, 'APPLICATION_NOT_FOUND', 'Pengajuan tidak ditemukan.');
-    response.json({ data: application });
-  }));
-
-  app.delete('/api/admin/applications/:id', asyncHandler(async (request, response) => {
-    if (!uuidSchema.safeParse(request.params.id).success) {
-      throw new ApiError(400, 'INVALID_ID', 'ID pengajuan tidak valid.');
-    }
-    const application = await repository.deleteApplication(request.params.id);
-    if (!application) throw new ApiError(404, 'APPLICATION_NOT_FOUND', 'Pengajuan tidak ditemukan.');
-    response.status(204).end();
-  }));
-
-  for (const resource of ['pets', 'shelters']) {
-    const collectionPath = `/api/admin/${resource}`;
-    const itemPath = `${collectionPath}/:id`;
-    const schema = resource === 'pets' ? petPayloadSchema : shelterPayloadSchema;
-    const listMethod = resource === 'pets' ? 'listAdminPets' : 'listAdminShelters';
-    const createMethod = resource === 'pets' ? 'createPet' : 'createShelter';
-    const updateMethod = resource === 'pets' ? 'updatePet' : 'updateShelter';
-    const deleteMethod = resource === 'pets' ? 'deletePet' : 'deleteShelter';
-
-    app.get(collectionPath, asyncHandler(async (_request, response) => {
-      response.json({ data: await repository[listMethod]({ limit: 100 }) });
-    }));
-
-    app.post(collectionPath, asyncHandler(async (request, response) => {
-      const input = parseBody(schema, request.body);
-      response.status(201).json({ data: await repository[createMethod](input) });
-    }));
-
-    app.patch(itemPath, asyncHandler(async (request, response) => {
-      if (!uuidSchema.safeParse(request.params.id).success) {
-        throw new ApiError(400, 'INVALID_ID', 'ID data tidak valid.');
-      }
-      const input = parseBody(schema.partial().strict(), request.body);
-      if (!Object.keys(input).length) {
-        throw new ApiError(400, 'EMPTY_UPDATE', 'Tidak ada perubahan untuk disimpan.');
-      }
-      const item = await repository[updateMethod](request.params.id, input);
-      if (!item) throw new ApiError(404, 'ITEM_NOT_FOUND', 'Data tidak ditemukan.');
-      response.json({ data: item });
-    }));
-
-    app.delete(itemPath, asyncHandler(async (request, response) => {
-      if (!uuidSchema.safeParse(request.params.id).success) {
-        throw new ApiError(400, 'INVALID_ID', 'ID data tidak valid.');
-      }
-      const item = await repository[deleteMethod](request.params.id);
-      if (!item) throw new ApiError(404, 'ITEM_NOT_FOUND', 'Data tidak ditemukan.');
-      response.status(204).end();
-    }));
-  }
+app.use(
+  '/api/admin/pets',
+  createAdminPetRoutes(petController)
+);
+app.use(
+  '/api/admin/shelters',
+  createAdminShelterRoutes(shelterController)
+);
+app.use(
+  '/api/admin/applications',
+  createAdminApplicationRoutes(applicationController)
+);
 
   app.use((error, request, response, _next) => {
     if (error.message === 'Origin is not allowed by CORS') {

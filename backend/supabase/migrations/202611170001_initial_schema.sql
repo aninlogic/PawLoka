@@ -115,10 +115,6 @@ create table if not exists public.applications (
     ),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint applications_contact_required check (
-    coalesce(nullif(btrim(email), ''), null) is not null
-    or coalesce(nullif(btrim(phone), ''), null) is not null
-  )
 );
 
 

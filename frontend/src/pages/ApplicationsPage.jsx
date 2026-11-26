@@ -24,7 +24,10 @@ function formatDate(value) {
 
 export function ApplicationsPage() {
   const [records, setRecords] = useState([])
-  const [pageStatus, setPageStatus] = useState({ kind: 'loading', message: '' })
+  const [pageStatus, setPageStatus] = useState({
+    kind: 'loading',
+    message: '',
+  })
   const [refreshKey, setRefreshKey] = useState(0)
   const [actionError, setActionError] = useState('')
 
@@ -33,11 +36,16 @@ export function ApplicationsPage() {
 
     async function loadApplications() {
       setPageStatus({ kind: 'loading', message: '' })
+
       const { claims, error } = readApplicationClaims()
+
       if (error) {
-        if (active) setPageStatus({ kind: 'error', message: error })
+        if (active) {
+          setPageStatus({ kind: 'error', message: error })
+        }
         return
       }
+
       if (!claims.length) {
         if (active) {
           setRecords([])
@@ -46,20 +54,30 @@ export function ApplicationsPage() {
         return
       }
 
-      const results = await Promise.all(claims.map(async (claim) => {
-        try {
-          const application = await fetchApplication(claim.id, claim.accessToken)
-          return { id: claim.id, application, error: '' }
-        } catch (requestError) {
-          return {
-            id: claim.id,
-            application: null,
-            error: requestError.response?.status === 404
-              ? 'Riwayat ini tidak tersedia. Pengajuan mungkin telah dihapus oleh admin.'
-              : 'Status belum dapat dimuat. Periksa koneksi, lalu coba muat ulang.',
+      const results = await Promise.all(
+        claims.map(async (claim) => {
+          try {
+            const application = await fetchApplication(
+              claim.id,
+              claim.accessToken
+            )
+
+            return {
+              id: claim.id,
+              application,
+              error: '',
+            }
+          } catch (requestError) {
+            return {
+              id: claim.id,
+              application: null,
+              error: requestError.response?.status === 404
+                ? 'Riwayat ini tidak tersedia. Pengajuan mungkin telah dihapus oleh admin.'
+                : 'Status belum dapat dimuat. Periksa koneksi, lalu coba muat ulang.',
+            }
           }
-        }
-      }))
+        })
+      )
 
       if (active) {
         setRecords(results)
@@ -68,6 +86,7 @@ export function ApplicationsPage() {
     }
 
     loadApplications()
+
     return () => {
       active = false
     }
@@ -75,10 +94,12 @@ export function ApplicationsPage() {
 
   function removeFromDevice(id) {
     const error = removeApplicationClaim(id)
+
     if (error) {
       setActionError(error)
       return
     }
+
     setActionError('')
     setRefreshKey((key) => key + 1)
   }
@@ -87,66 +108,127 @@ export function ApplicationsPage() {
     <section className="page-main applications-page">
       <header className="applications-heading">
         <div>
-          <span className="eyebrow"><ClipboardCheck size={16} /> Langkah adopsimu</span>
+          <span className="eyebrow">
+            <ClipboardCheck size={16} />
+            Langkah adopsimu
+          </span>
+
           <h1>Riwayat pengajuan</h1>
+
           <p>
             Pantau status terbaru pengajuan yang tersimpan di perangkat ini.
           </p>
         </div>
-        <Link className="text-link" to="/adoption">Baca panduan adopsi <ArrowRight size={17} /></Link>
+
+        <Link className="text-link" to="/adoption">
+          Baca panduan adopsi <ArrowRight size={17} />
+        </Link>
       </header>
 
-      {actionError && <p className="form-error" role="alert">{actionError}</p>}
-      {pageStatus.kind === 'loading' && (
-        <div className="loading-state" role="status">Memuat riwayat pengajuan...</div>
+      {actionError && (
+        <p className="form-error" role="alert">
+          {actionError}
+        </p>
       )}
+
+      {pageStatus.kind === 'loading' && (
+        <div className="loading-state" role="status">
+          Memuat riwayat pengajuan...
+        </div>
+      )}
+
       {pageStatus.kind === 'error' && (
         <div className="error-card" role="alert">
           <p>{pageStatus.message}</p>
-          <button className="button-secondary" type="button" onClick={() => setRefreshKey((key) => key + 1)}>
+
+          <button
+            className="button-secondary"
+            type="button"
+            onClick={() => setRefreshKey((key) => key + 1)}
+          >
             <RotateCw size={16} /> Coba lagi
           </button>
         </div>
       )}
+
       {pageStatus.kind === 'empty' && (
         <div className="empty-card applications-empty">
           <h2>Belum ada riwayat di perangkat ini</h2>
-          <p>Pengajuan yang disimpan dari perangkat ini akan muncul di sini.</p>
-          <Link className="button-primary" to="/pets">Jelajahi Hewan</Link>
+
+          <p>
+            Pengajuan yang disimpan dari perangkat ini akan muncul di sini.
+          </p>
+
+          <Link className="button-primary" to="/pets">
+            Jelajahi Hewan
+          </Link>
         </div>
       )}
+
       {pageStatus.kind === 'success' && records.length > 0 && (
         <div className="application-history-list">
           {records.map(({ id, application, error }) => (
             <article className="application-history-card" key={id}>
-              <img
-                src={application?.pet?.image_url || '/shelter-fallback.svg'}
-                alt={application?.pet?.name || 'Hewan'}
-              />
+              {application?.pet?.id ? (
+                <Link
+                  className="application-history-image-link"
+                  to={`/pets/${encodeURIComponent(application.pet.id)}`}
+                  aria-label={`Lihat detail ${application.pet.name || 'hewan'}`}
+                >
+                  <img
+                    src={application.pet.image_url || '/shelter-fallback.svg'}
+                    alt={application.pet.name || 'Hewan'}
+                  />
+                </Link>
+              ) : (
+                <img
+                  src="/shelter-fallback.svg"
+                  alt="Hewan"
+                />
+              )}
+
               <div className="application-history-details">
                 {application ? (
                   <>
-                    <span className={`application-status application-status--${application.status}`}>
+                    <span
+                      className={`application-status application-status--${application.status}`}
+                    >
                       {statusNames[application.status] || 'Status belum tersedia'}
                     </span>
-                    <h2>{application.pet?.name || 'Hewan pilihan'}</h2>
+
+                    {application.pet?.id ? (
+                      <Link
+                        className="application-history-title-link"
+                        to={`/pets/${encodeURIComponent(application.pet.id)}`}
+                      >
+                        <h2>{application.pet.name || 'Hewan pilihan'}</h2>
+                      </Link>
+                    ) : (
+                      <h2>{application.pet?.name || 'Hewan pilihan'}</h2>
+                    )}
+
                     <p>
                       {application.pet?.species
-                        ? speciesNames[application.pet.species] || application.pet.species
+                        ? speciesNames[application.pet.species] ||
+                          application.pet.species
                         : 'Jenis hewan belum tersedia'}
-                      {application.shelter?.name ? ` · ${application.shelter.name}` : ''}
+
+                      {application.shelter?.name
+                        ? ` · ${application.shelter.name}`
+                        : ''}
                     </p>
-                    <small>Diajukan {formatDate(application.created_at)}</small>
-                    {application.pet?.id && (
-                      <Link className="text-link" to={`/pets/${encodeURIComponent(application.pet.id)}`}>
-                        Lihat detail hewan
-                      </Link>
-                    )}
+
+                    <small>
+                      Diajukan {formatDate(application.created_at)}
+                    </small>
                   </>
                 ) : (
-                  <p className="form-error" role="alert">{error}</p>
+                  <p className="form-error" role="alert">
+                    {error}
+                  </p>
                 )}
               </div>
+
               <div className="application-history-actions">
                 {error && (
                   <button
@@ -157,8 +239,24 @@ export function ApplicationsPage() {
                     <RotateCw size={16} /> Muat ulang
                   </button>
                 )}
-                <button className="text-button" type="button" onClick={() => removeFromDevice(id)}>
-                  <Trash2 size={16} /> Hapus dari perangkat
+
+                {application && (
+                  <Link
+                    className="button-secondary"
+                    to={`/applications/${encodeURIComponent(id)}/receipt`}
+                  >
+                    <ClipboardCheck size={16} />
+                    Lihat detail pengajuan
+                  </Link>
+                )}
+
+                <button
+                  className="text-button"
+                  type="button"
+                  onClick={() => removeFromDevice(id)}
+                >
+                  <Trash2 size={16} />
+                  Hapus dari perangkat
                 </button>
               </div>
             </article>

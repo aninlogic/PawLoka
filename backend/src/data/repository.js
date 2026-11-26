@@ -1,4 +1,4 @@
-const { createClient } = require('@supabase/supabase-js');
+const { createSupabaseClient } = require('../config/supabaseClient');
 const { pets, shelters } = require('./demo-data');
 
 function matchesSearch(pet, query) {
@@ -60,14 +60,7 @@ function createDemoRepository() {
 }
 
 function createSupabaseRepository() {
-  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('DATA_MODE=supabase requires Supabase server credentials.');
-  }
-
-  const client = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+const client = createSupabaseClient();
 
   return {
     mode: 'supabase',
@@ -172,7 +165,19 @@ function createSupabaseRepository() {
     async getClaimedApplication(id, accessTokenHash) {
       const { data, error } = await client
         .from('applications')
-        .select('id, status, created_at, pet:pets(id, name, species, image_url), shelter:shelters(name)')
+
+.select(`
+  id,
+  applicant_name,
+  domicile,
+  adoption_reason,
+  pet_experience,
+  message,
+  status,
+  created_at,
+  pet:pets(id, name, species, image_url),
+  shelter:shelters(name)
+`)
         .eq('id', id)
         .eq('access_token_hash', accessTokenHash)
         .maybeSingle();

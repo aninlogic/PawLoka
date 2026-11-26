@@ -253,13 +253,13 @@ app.use(
     const detailCauseCode = typeof error.details === 'string'
       ? error.details.match(/\(([A-Z][A-Z0-9_]+)\)/)?.[1]
       : undefined;
-    const errorDetails = {
-      path: request.path,
-      errorName: error.name || 'Error',
-      errorCode: error.code || error.cause?.code || detailCauseCode || 'UNKNOWN',
-    };
+const errorDetails = {
+  path: request.path,
+  errorName: error.name || 'Error',
+  errorCode: error.code || error.cause?.code || detailCauseCode || 'UNKNOWN',
+  errorMessage: redactSensitiveText(error.message),
+};
     if (process.env.NODE_ENV !== 'production') {
-      errorDetails.errorMessage = redactSensitiveText(error.message);
       if (error.stack) errorDetails.errorStack = redactSensitiveText(error.stack);
       if (error.details) errorDetails.errorDetails = redactSensitiveText(error.details);
       if (error.hint) errorDetails.errorHint = redactSensitiveText(error.hint);

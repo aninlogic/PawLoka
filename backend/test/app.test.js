@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const { after, test } = require('node:test');
 const request = require('supertest');
-const { createApp } = require('../src/app');
+const { createApp } = require('../src/appFactory');
 const { createDemoRepository } = require('../src/data/repository');
 
 const app = createApp({ repository: createDemoRepository() });

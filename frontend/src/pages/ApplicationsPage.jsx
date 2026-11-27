@@ -1,4 +1,4 @@
-import { ArrowRight, ClipboardCheck, RotateCw, Trash2 } from 'lucide-react'
+import { ArrowRight, ClipboardCheck, Download, Image, RotateCw, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchApplication } from '../api/client'
@@ -6,6 +6,7 @@ import {
   readApplicationClaims,
   removeApplicationClaim,
 } from '../utils/application-history-storage'
+import { downloadApplicationFile } from '../utils/application-export'
 import { speciesNames } from '../utils/pet-format'
 
 const statusNames = {
@@ -30,6 +31,15 @@ export function ApplicationsPage() {
   })
   const [refreshKey, setRefreshKey] = useState(0)
   const [actionError, setActionError] = useState('')
+const [downloadState, setDownloadState] = useState({
+  id: '',
+  format: '',
+})
+
+const [downloadError, setDownloadError] = useState({
+  id: '',
+  message: '',
+})
 
   useEffect(() => {
     let active = true
@@ -91,6 +101,31 @@ export function ApplicationsPage() {
       active = false
     }
   }, [refreshKey])
+
+async function handleDownload(id, application, format) {
+  setDownloadState({ id, format })
+  setDownloadError({ id: '', message: '' })
+
+  try {
+    await downloadApplicationFile({
+      application,
+      id,
+      format,
+    })
+  } catch (error) {
+    console.error('Gagal mengunduh receipt:', error)
+
+    setDownloadError({
+      id,
+      message: `Gagal membuat file ${format.toUpperCase()}. Silakan coba lagi.`,
+    })
+  } finally {
+    setDownloadState({
+      id: '',
+      format: '',
+    })
+  }
+}
 
   function removeFromDevice(id) {
     const error = removeApplicationClaim(id)
@@ -249,7 +284,39 @@ export function ApplicationsPage() {
                     Lihat detail pengajuan
                   </Link>
                 )}
+{application && (
+  <div className="application-download-actions">
+    <button
+      className="button-secondary"
+      type="button"
+      disabled={Boolean(downloadState.id)}
+      onClick={() => handleDownload(id, application, 'pdf')}
+    >
+      <Download size={16} />
+      {downloadState.id === id && downloadState.format === 'pdf'
+        ? 'Membuat PDF...'
+        : 'Download PDF'}
+    </button>
 
+    <button
+      className="button-secondary"
+      type="button"
+      disabled={Boolean(downloadState.id)}
+      onClick={() => handleDownload(id, application, 'png')}
+    >
+      <Image size={16} />
+      {downloadState.id === id && downloadState.format === 'png'
+        ? 'Membuat gambar...'
+        : 'Download PNG'}
+    </button>
+  </div>
+)}
+
+{downloadError.id === id && (
+  <p className="form-error" role="alert">
+    {downloadError.message}
+  </p>
+)}
                 <button
                   className="text-button"
                   type="button"
